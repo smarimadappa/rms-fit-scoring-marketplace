@@ -1,0 +1,11 @@
+{
+  "name": "g2-skills",
+  "owner": { "name": "G2 RMS Team", "email": "smarimadappa@g2.com" },
+  "plugins": [
+    {
+      "name": "rms-fit-scoring",
+      "source": "./plugins/rms-fit-scoring",
+      "description": "Score a G2 vendor product for Review Managed Services (RMS) fit and produce a go/no-go scorecard."
+    }
+  ]
+}

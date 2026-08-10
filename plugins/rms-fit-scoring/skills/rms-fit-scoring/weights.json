@@ -1,0 +1,73 @@
+{
+  "_comment": "SINGLE SOURCE OF TRUTH for all tunable scoring numbers. Edit here only. The SKILL.md reference and the scorecard script both read from this file. Raw points are relative; they are normalized to sum to 100 at runtime, so you can change any number without recalculating the others.",
+  "weights_raw_points": {
+    "Market Presence Score": 18,
+    "Account Segment": 18,
+    "Total customers & end-users": 18,
+    "End-user profile": 18,
+    "Customer industry (vertical G2-activity)": 18,
+    "Review generation likelihood": 18,
+    "Regional distribution": 12,
+    "Category popularity": 8,
+    "Approved G2 reviews": 8,
+    "Internal-integration reviews": 8,
+    "Stacked G2 users": 4
+  },
+  "high_weight_inputs": [
+    "Market Presence Score",
+    "Account Segment",
+    "Total customers & end-users",
+    "End-user profile",
+    "Customer industry (vertical G2-activity)",
+    "Review generation likelihood"
+  ],
+  "recommendation_bands": [
+    {
+      "min": 61,
+      "label": "Go"
+    },
+    {
+      "min": 31,
+      "label": "Proceed with caution / needs further validation"
+    },
+    {
+      "min": 0,
+      "label": "No"
+    }
+  ],
+  "low_confidence_rule": {
+    "min_high_weight_missing": 2,
+    "min_total_inputs_available": 7,
+    "cap_band": "Proceed with caution / needs further validation"
+  },
+  "_low_activity_industries_comment": "Reviewer verticals that engage poorly with G2 regardless of user job type. Business-maintained; grows over time. Used by the Customer industry input: if the #1 reviewer vertical is on this list, that input floors at 15 AND the final score is multiplied by low_activity_top1_penalty. Match on survey_responses.industry_name.",
+  "low_activity_top1_penalty": 0.7,
+  "low_activity_industries": [
+    "Non-Profit Organization Management",
+    "Religious Institutions",
+    "Civic & Social Organization",
+    "Philanthropy",
+    "Fund-Raising",
+    "Government Administration",
+    "Government Relations",
+    "Public Policy",
+    "Public Safety",
+    "Law Enforcement",
+    "Military",
+    "Defense & Space",
+    "Legislative Office",
+    "Judiciary",
+    "International Affairs",
+    "Political Organization",
+    "Libraries",
+    "Museums and Institutions",
+    "Construction",
+    "Restaurants",
+    "Retail",
+    "Supermarkets",
+    "Farming",
+    "Ranching",
+    "Fishery",
+    "Dairy"
+  ]
+}
