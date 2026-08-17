@@ -7,9 +7,21 @@ go / no-go scorecard. Distributed as a Claude plugin from this repo.
 
 You need **read access to this repo** first. It's private, so:
 - make sure you've been added as a collaborator (or it's under a G2 org you're in), and
-- your local git is authenticated to GitHub (`gh auth login`, or an SSH key on your account).
+- your GitHub account is authenticated (in Cowork: signed in to GitHub; in Claude Code:
+  `gh auth login` or an SSH key on your account).
 
-Then, inside Claude (Claude Code, or Cowork / desktop with the `/plugin` interface), run:
+### In Cowork (desktop app) — most people
+
+1. Open **Customize** in the sidebar → **Plugins**.
+2. Click **Add marketplace** and enter `smarimadappa/rms-fit-scoring-marketplace`
+   (the `owner/repo` shorthand or the full GitHub URL both work).
+3. Find **rms-fit-scoring** in the list and click **Install**.
+
+> Note: `/plugin ...` is **not** a Cowork chat command — use the Plugins screen above.
+
+### In Claude Code (terminal) — if you code
+
+Inside an interactive `claude` session:
 
 ```
 /plugin marketplace add smarimadappa/rms-fit-scoring-marketplace
@@ -24,13 +36,11 @@ for RMS fit"* and it runs.
 
 ## Get the latest version
 
-Whenever a new version ships, pull it with:
+Whenever a new version ships:
+- **Cowork:** go to **Customize → Plugins** and update rms-fit-scoring there.
+- **Claude Code:** run `/plugin marketplace update`.
 
-```
-/plugin marketplace update
-```
-
-You only ever run `add` and `install` once. `update` is the only command you need after that.
+You only add + install once. After that, updating is the only step you ever repeat.
 
 ## Who maintains this
 
