@@ -37,7 +37,7 @@ A `%name%` search returns near-matches (e.g. "Photoshop" also returns Lightroom,
 **Capture and carry these for the rest of the run** — do not look them up again:
 - `product_id` — the filter key for every other view below
 - `product_name` and `vendor_name` — for output and disambiguation
-- `vendor_hq_country` / `vendor_hq_region` — a starting signal for the regional-distribution input
+- `vendor_hq_country` / `vendor_hq_region` — a starting prior only for the regional-distribution input; it must be verified against actual customer geography, not used as the answer
 
 ### Step 2 — Gather inputs (filter every view by the captured product_id)
 Get a raw value for each of the eleven inputs. For all Looker inputs, **pass the `product_id` from Step 1 as a server-side filter** via `looker_run_query` — one product's rows only, never a full pull. Reuse the ID you already have; do not re-resolve it.
@@ -52,7 +52,7 @@ Get a raw value for each of the eleven inputs. For all Looker inputs, **pass the
 
 **By web research** (company site, ZoomInfo/Clay-style sources, G2 review geography, job-title signals):
 - Total customers & end-users (and whether multiple end-users per customer)
-- Regional distribution (US-heavy / global / APAC-heavy) — seed from the captured `vendor_hq_region`
+- Regional distribution (US-heavy / global / APAC-heavy) — measures the customer/end-user base, never the vendor's own HQ or office footprint. Use the captured `vendor_hq_region` only as a starting prior, then verify against actual customer geography (G2 review-country mix, firmographic tools like 6sense/ZoomInfo, customer-logo pages by region). A vendor with offices on six continents can still have a customer base that's 85%+ concentrated in one country — the customer data wins.
 - End-user profile (desk workers vs. field/skilled-labor/public-sector)
 - Internal-integration reviews (sibling products used together with many reviews?)
 

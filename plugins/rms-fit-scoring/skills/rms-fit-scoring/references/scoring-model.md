@@ -62,6 +62,8 @@ The #1 spot is decisive: if a product's single biggest reviewer vertical is a lo
 
 ### Regional distribution (web research + G2 review geography)
 The principle is **breadth of regions**, not which region. Single-region concentration is the limiter — it shrinks the pool of reviewers and makes campaigns hard. More regions = easier.
+
+Score the geography of the customer/reviewer pool, not the vendor's office locations.
 | Distribution | Sub-score |
 |---|---|
 | Global / many regions | 100 |
