@@ -34,16 +34,21 @@ Log-scaled on customer count, with a bonus for multiple end-users per customer.
 End-user multiplier: if clearly **many end-users per customer**, use base as-is (or +0). If **~1 end-user per customer** (niche), multiply base by 0.7. Cap at 100.
 
 ### End-user profile (web research)
-Can the typical end-user realistically be reached to leave a review? People who sit at a computer all day are reachable; people who don't are very unlikely to review. **This input mattered enormously in real campaigns — score it strictly.**
+Can the typical end-user realistically be reached to leave a review? **This input mattered enormously in real campaigns — score it strictly.** Judge by the *typical* end user, not the buyer. Score the single typical/dominant persona — there is no "mixed" fallback; a genuine split still requires picking the one that dominates.
 
-Team rule: if the product's end user is a **Skilled Laborer, Brick & Mortar worker, or Public Sector worker**, that is bad for RMS — they are not desk-based and rarely leave reviews.
-| Profile | Sub-score |
-|---|---|
-| Desk / computer-based knowledge workers | 100 |
-| Mixed (a real split of desk and non-desk users) | 50 |
-| Skilled labor / brick & mortar / public sector / other non-desk | 10 |
+Apply these checks in order:
 
-Judge by the *typical* end user, not the buyer. E.g. dealership service/parts/floor staff, field technicians, retail/warehouse workers, nurses, government field staff → the non-desk floor (10), even if the product is sold to an enterprise. Only score "mixed" when there's a genuine split, not to soften a mostly-non-desk base.
+**1. Public Sector check (overrides everything below).** If the typical end-user is a public-sector worker — teachers, government employees, DMV workers, city workers, Department of Sanitation, etc. — score **10**, regardless of whether the specific role is desk-based (e.g. a city hall clerk still floors here). This persona has consistently been the hardest to capture and convert into reviewers, so it's scored separately from — and independent of — the desk/non-desk split below. (Note: the *Customer industry* input separately penalizes government reviewer verticals; a public-sector product can be hit by both, which is intentional given how hard this persona is.)
+
+**2. Non-desk floor.** If not public sector, but the typical end-user is a private-sector Skilled Laborer or Brick & Mortar worker — dealership service/parts/floor staff, field technicians, retail/warehouse workers, nurses, etc. — score **10**, even if the product is sold to an enterprise.
+
+**3. Role tier.** Otherwise, score by the typical end-user's job function:
+| Tier | Roles | Sub-score |
+|---|---|---|
+| High | Engineering/Developers, Data/Analytics/BI, Product Management, Design/Creative/UX, Sales, Customer Success/Support, Marketing, Project Managers | 100 |
+| Mid | Administrative/Office Management, IT, Operations | 70 |
+| Mid/low | Procurement/Supply Chain, HR, Finance, Consulting/Professional Services, Compliance/Risk/Security | 40 |
+| Lowest | Legal, Executive/C-Suite | 20 |
 
 ### Customer industry — vertical G2-activity (Look: survey_responses)
 Separate from end-user profile: even desk-based users won't review if their *industry* doesn't engage with G2. Churches, non-profits, and public-sector buyers barely use G2 regardless of job type — this is what sank real campaigns.
