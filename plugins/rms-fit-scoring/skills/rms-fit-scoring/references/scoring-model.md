@@ -48,8 +48,8 @@ Apply these checks in order:
 | Tier | Roles | Sub-score |
 |---|---|---|
 | High | Engineering/Developers, Data/Analytics/BI, Product Management, Design/Creative/UX, Sales, Customer Success/Support, Marketing, Project Managers | 100 |
-| Mid | Administrative/Office Management, IT, Operations | 70 |
-| Mid/low | Procurement/Supply Chain, HR, Finance, Consulting/Professional Services, Compliance/Risk/Security | 40 |
+| Mid | Administrative/Office Management, IT, Operations, HR, Finance | 70 |
+| Mid/low | Procurement/Supply Chain, Consulting/Professional Services, Compliance/Risk/Security | 40 |
 | Lowest | Legal, Executive/C-Suite | 20 |
 
 ### Customer industry — vertical G2-activity (Look: survey_responses)
