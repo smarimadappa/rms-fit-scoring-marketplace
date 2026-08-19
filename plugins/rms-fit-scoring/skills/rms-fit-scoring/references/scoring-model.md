@@ -52,10 +52,14 @@ Apply these checks in order:
 | Mid/low | Procurement/Supply Chain, Consulting/Professional Services, Compliance/Risk/Security | 40 |
 | Lowest | Legal, Executive/C-Suite | 20 |
 
-### Customer industry — vertical G2-activity (Look: survey_responses)
+### Customer industry — vertical fit (web research primary, G2 reviewer data secondary)
 Separate from end-user profile: even desk-based users won't review if their *industry* doesn't engage with G2. Churches, non-profits, and public-sector buyers barely use G2 regardless of job type — this is what sank real campaigns.
 
-Pull the product's reviewer-industry mix from `survey_responses.industry_name` (filtered by `product_id`, sorted by count desc, ignore the null row). Take the **top 3 verticals**. Compare against `low_activity_industries` in `weights.json` (a business-maintained list that grows over time):
+**Primary source: public research.** Determine the top verticals the vendor/product actually sells into from public sources — the vendor's website (industries/solutions/"who we serve" pages), case studies, customer-logo pages organized by industry, marketing copy, and analyst/press coverage. This is the primary data point for the top-3 vertical mix, since it reflects the real customer base rather than only customers who happened to leave a review. Map findings to the same industry-name taxonomy used in `low_activity_industries` (weights.json) as closely as possible so the comparison below is apples-to-apples.
+
+**Secondary source: G2 reviewer data.** Pull `survey_responses.industry_name` (filtered by `product_id`, sorted by count desc, ignore the null row) as a corroborating signal — useful to fill gaps or confirm the public-research read when it's ambiguous, but it should not override clear public-facing evidence of the vendor's actual target verticals. Only fall back to `survey_responses` alone (as the #1/top-3 call) when public research turns up no named verticals at all (a genuinely horizontal product with no case studies or stated targeting) — note in the scorecard that the read is reviewer-data-only in that case. If both sources materially disagree (e.g., public research shows broad horizontal targeting but reviewer data skews heavily to one vertical, or vice versa), the public-research read wins for the #1 spot; note the discrepancy.
+
+Take the **top 3 verticals** (public research first, `survey_responses` filling gaps/corroborating) and compare against `low_activity_industries` in `weights.json` (a business-maintained list that grows over time):
 | Condition | Sub-score |
 |---|---|
 | #1 vertical is low-activity | 15 (floor) |
@@ -63,9 +67,9 @@ Pull the product's reviewer-industry mix from `survey_responses.industry_name` (
 | #1 normal, 1 of top-3 low-activity | 75 |
 | all top-3 normal | 100 |
 
-The #1 spot is decisive: if a product's single biggest reviewer vertical is a low-activity one, it floors — that pool won't produce reviews no matter how big the customer is. If `survey_responses` returns no usable industries, mark this input unknown.
+The #1 spot is decisive: if a product's single biggest customer vertical is a low-activity one, it floors — that pool won't produce reviews no matter how big the customer base is. If neither public research nor `survey_responses` yields usable industries, mark this input unknown.
 
-**Score penalty (not just the sub-score).** When the #1 reviewer vertical is low-activity, the input floors at 15 *and* the whole final score is multiplied by `low_activity_top1_penalty` (weights.json, default 0.7). Rationale: a dead top vertical is close to disqualifying and must dominate, not be averaged away by strong market-presence/category signals. In the scoring JSON, set `"low_activity_top1": true` on this input to trigger the penalty. (Example: APS — Non-Profit is the #1 reviewer vertical → industry sub-score 15 and final ×0.7, dropping it from ~57 to ~40, matching a real campaign that yielded only 9 reviews.)
+**Score penalty (not just the sub-score).** When the #1 vertical is low-activity, the input floors at 15 *and* the whole final score is multiplied by `low_activity_top1_penalty` (weights.json, default 0.7). Rationale: a dead top vertical is close to disqualifying and must dominate, not be averaged away by strong market-presence/category signals. In the scoring JSON, set `"low_activity_top1": true` on this input to trigger the penalty. (Example: APS — Non-Profit is the #1 vertical → industry sub-score 15 and final ×0.7, dropping it from ~57 to ~40, matching a real campaign that yielded only 9 reviews.)
 
 ### Regional distribution (web research + G2 review geography)
 The principle is **breadth of regions**, not which region. Single-region concentration is the limiter — it shrinks the pool of reviewers and makes campaigns hard. More regions = easier.
