@@ -2,8 +2,8 @@
   "_comment": "SINGLE SOURCE OF TRUTH for all tunable scoring numbers. Edit here only. The SKILL.md reference and the scorecard script both read from this file. Raw points are relative; they are normalized to sum to 100 at runtime, so you can change any number without recalculating the others.",
   "weights_raw_points": {
     "Market Presence Score": 18,
-    "Account Segment": 18,
-    "Total customers & end-users": 18,
+    "Account Segment": 6,
+    "Total customers & end-users": 30,
     "End-user profile": 18,
     "Customer industry (vertical G2-activity)": 18,
     "Review generation likelihood": 18,
@@ -13,6 +13,7 @@
     "Internal-integration reviews": 8,
     "Stacked G2 users": 4
   },
+  "_account_segment_vs_customer_count_comment": "Account Segment was deliberately dropped from 18 to 6 raw points while Total customers & end-users rose from 18 to 30 (points moved 1:1, total pool unchanged at 148, so no other input's weight shifted). Rationale: territory_segment can mislabel a product as Enterprise/Strategic purely because of the vendor's other (acquired-into) business, even when the product itself has a small standalone customer base -- e.g. an acquired product inheriting its parent's Enterprise segment. A high segment score should no longer be able to meaningfully rescue a thin customer count.",
   "high_weight_inputs": [
     "Market Presence Score",
     "Account Segment",
