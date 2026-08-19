@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.6.0
+- Rebalance weight from Account Segment (18→6 raw points) to Total customers & end-users (18→30): a mislabeled/inherited Enterprise or Strategic territory segment (e.g. from an acquisition) can no longer meaningfully offset a small standalone customer count.
+
 ## v0.5.0
 - Move HR and Finance to Mid tier (70) in End-user profile scoring; Procurement/Supply Chain stays in Mid/low (40).
 - Customer industry now sourced primarily from public research (vendor site, case studies, customer logos by industry) rather than G2 reviewer data; `survey_responses.industry_name` is a secondary corroborating signal only.
