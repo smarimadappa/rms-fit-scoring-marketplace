@@ -51,7 +51,7 @@ Get a raw value for each of the eleven inputs. For all Looker inputs, **pass the
 - **5080/5079/5078** — Review generation likelihood → three-vector velocity read (competitor set, product's own 52-wk weekly series, category 52-wk weekly series). Main category + 2 biggest others. Recipes in `looker-map.md`, math in `scoring-model.md`.
 
 **By web research** (company site, ZoomInfo/Clay-style sources, G2 review geography, job-title signals):
-- Total customers & end-users (and whether multiple end-users per customer)
+- Total customers & end-users (and whether multiple end-users per customer), plus the product's own launch/GA date — a product live less than 2 years floors this input rather than being scored on the vendor's overall customer count (see `scoring-model.md`)
 - Regional distribution (US-heavy / global / APAC-heavy) — measures the customer/end-user base, never the vendor's own HQ or office footprint. Use the captured `vendor_hq_region` only as a starting prior, then verify against actual customer geography (G2 review-country mix, firmographic tools like 6sense/ZoomInfo, customer-logo pages by region). A vendor with offices on six continents can still have a customer base that's 85%+ concentrated in one country — the customer data wins.
 - End-user profile (scored by typical persona: public-sector workers floor first regardless of desk status, then non-desk/skilled-labor floors, then a 4-tier role table from Engineering/Sales-type roles down to Legal/Executive — see `scoring-model.md`)
 - Internal-integration reviews (sibling products used together with many reviews?)

@@ -24,6 +24,8 @@ Higher enterprise focus = better. Manually enforced mapping:
 
 ### Total customers & end-users (web research)
 Log-scaled on customer count, with a bonus for multiple end-users per customer.
+
+**New-product floor (check first).** Find the product's own launch/GA date — when *this specific product* first shipped, not the vendor's founding date or a sibling/suite product's launch. If this product has been generally available for **less than 2 years**, floor this sub-score at **15** regardless of any customer count found, and do not substitute the vendor's total/company-wide customer count — a young product riding on an established vendor's broader install base hasn't earned its own customer base yet, and the vendor-wide figure would overstate it. Only score against the table below (and only ever count *product-specific* customers, never vendor-wide totals) once the product has ≥2 years on the market. If the launch date can't be found, don't assume the product is new — mark this check unknown and score customer count normally from whatever product-specific number research turns up.
 | Customers | Base |
 |---|---|
 | 10,000+ | 100 |
