@@ -47,7 +47,7 @@ Get a raw value for each of the eleven inputs. For all Looker inputs, **pass the
 - **5042** — Market Presence Score → most-recent-release `Overall` row's `market_presence` (separate explore; sort by release_date desc, take first)
 - **5043** — Account Segment → **`account_contract_info.territory_segment` (Salesforce territory segment) ONLY.** Never the review-derived `survey_responses.company_segment` or any other segment-named field; if it has no row, mark unknown rather than substituting. Ref look 5077.
 - **5044** — Approved G2 reviews → `approved_reviews` count
-- **5045** — Category popularity → category, competitor count (`products_on_grid`), buyer intent (`category_bi_signals`); take the primary category row, ignore null/"Unknown" fan-out
+- **5045** — Category popularity → category, competitor count (`products_on_grid`), buyer intent (`category_bi_signals`); take the primary category row, ignore null/"Unknown" fan-out. **Then supplement via G2 MCP:** find the category's ID (`list_categories`), pull every product in it (`list_products`, `filter_category_ids`, paginated across all pages), sum `review_count` across all of them, and blend per `scoring-model.md` (0.6 bi-signals / 0.4 review-volume). If the G2 MCP pull isn't available, score on `category_bi_signals` alone and note the fallback.
 - **5080/5079/5078** — Review generation likelihood → three-vector velocity read (competitor set, product's own 52-wk weekly series, category 52-wk weekly series). Main category + 2 biggest others. Recipes in `looker-map.md`, math in `scoring-model.md`.
 
 **By web research** (company site, ZoomInfo/Clay-style sources, G2 review geography, job-title signals):

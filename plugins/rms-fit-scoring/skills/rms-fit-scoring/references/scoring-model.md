@@ -91,10 +91,10 @@ Score the geography of the customer/reviewer pool, not the vendor's office locat
 
 (US-only is the hardest major-market case; a sub-national footprint — e.g. a vendor serving only ~7 states — is worse still, because the reachable reviewer pool is tiny. Score 10 when research shows the customer base is confined to a few states/regions within one country.)
 
-### Category popularity (Look 5045)
+### Category popularity (Look 5045, supplemented by G2 MCP review-volume)
 Measures how active/popular the product's **category** is — a genuinely category-level property, so a category-level signal is the right tool. `category_bi_signals` (category buyer-intent, last 6 mo) discriminates well *between* categories (e.g. Photo Editing ≈ 42,000 vs. Car Dealer ≈ 7,400 — ~6x). It does NOT discriminate between products in the same category (all share the category value), so do **not** rank a product against its peers on it — score the category's absolute value directly.
 
-Pull the category's `category_bi_signals` for the product's `main_category_name` (take the populated row; ignore null/0 fan-out rows). Absolute bands:
+**Component A — category buyer intent (primary, Looker).** Pull the category's `category_bi_signals` for the product's `main_category_name` (take the populated row; ignore null/0 fan-out rows). Absolute bands:
 | Category BI signals (6 mo) | Sub-score |
 |---|---|
 | 30,000+ | 100 |
@@ -103,7 +103,25 @@ Pull the category's `category_bi_signals` for the product's `main_category_name`
 | 2,000–6,999 | 30 |
 | < 2,000 | 15 |
 
-`products_on_grid` = competitor count, context only (not scored). A low-popularity category (like Car Dealer at ~7,400 → 50, low end) is a real headwind and should pull the score down — do not exclude it.
+`products_on_grid` = competitor count, context only (not scored).
+
+**Component B — total category review volume (supplement, G2 MCP).** Buyer intent measures *interest*, not realized output — a category can attract plenty of research traffic without ever converting into reviews (e.g. Car Dealer: ~7,400 BI signals scores a mid-tier 50 above, but its actual platform-wide review total is one of the lowest sampled — lower than niche categories like Church Management — because the end-user persona, dealership floor/service staff, is the same non-desk persona that floors **End-user profile**). Pull this via `list_products` (G2 MCP), filtered by the category's ID, paginated across all pages, summing the `review_count` field across every product in the category:
+| Total category reviews (all products, all-time) | Sub-score |
+|---|---|
+| 100,000+ | 100 |
+| 50,000–99,999 | 90 |
+| 25,000–49,999 | 80 |
+| 15,000–24,999 | 70 |
+| 7,500–14,999 | 60 |
+| 3,000–7,499 | 50 |
+| 1,500–2,999 | 40 |
+| 750–1,499 | 30 |
+| 250–749 | 20 |
+| < 250 | 10 |
+
+**Blend: sub-score = 0.6 × Component A + 0.4 × Component B.** Component A stays primary since it's the established, longer-running metric; Component B is a supplement that pulls the score down when buyer interest doesn't translate into real reviews (as with Car Dealer) — it is not a replacement and does not override Component A on its own. If the G2 MCP pull is unavailable or returns nothing, fall back to Component A alone and note the input as scored on bi-signals only. These review-volume bands are a first draft calibrated against a 5-category sample (CRM, Photo Editing, CPQ, Church Management, Car Dealer) — treat the cutoffs as provisional until validated against a wider spread of categories.
+
+A low-popularity category on either component is a real headwind and should pull the score down — do not exclude it.
 
 ### Review generation likelihood (looks 5078/5079/5080 — three-vector velocity read)
 The most direct signal: does this product's competitive neighborhood actually produce reviews, and does the product itself? Query recipes in `looker-map.md`; all in the standard explore; **52-week window**.
