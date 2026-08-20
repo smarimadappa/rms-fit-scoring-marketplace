@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.8.0
+- Add a hard service/provider disqualifier: if the resolved G2 listing's `type` isn't "Software" (e.g. a service/agency listing, `type: "Provider"`), scoring stops before Step 2 runs at all. Final score is forced to 0 and the band to a hard "No — not a fit" regardless of any other input — not averaged, not subject to the low-confidence cap.
+
 ## v0.7.0
 - Total customers & end-users now floors at 15 whenever End-user profile floored at 10 (Public Sector/Non-desk persona) — a large customer base of an unreachable persona (e.g. Dentally's dental staff) no longer scores on raw count alone.
 - Renamed "vertical" to "industry" throughout the Customer industry section for consistency.
