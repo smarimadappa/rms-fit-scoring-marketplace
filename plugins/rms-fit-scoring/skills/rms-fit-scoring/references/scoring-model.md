@@ -36,10 +36,12 @@ If neither floor check fires, score against the table below.
 |---|---|
 | 10,000+ | 100 |
 | 2,000–9,999 | 80 |
-| 500–1,999 | 60 |
-| 100–499 | 40 |
-| < 100 | 20 |
+| 1,001–1,999 | 60 |
+| 500–1,000 | 40 |
+| < 500 | 10 |
 End-user multiplier: if clearly **many end-users per customer**, use base as-is (or +0). If **~1 end-user per customer** (niche), multiply base by 0.7. Cap at 100.
+
+**3. Minimum-customer floor.** A product with **fewer than 500** product-specific customers bottoms this sub-score out at **10**, regardless of end-user density — the multiplier only ever lowers a base score further, so it can't lift this floor. This floor is subordinate to floors 1 and 2 above: if either already fired (new-product floor at 15, or end-user floor at 15), that higher floor wins and this one doesn't apply.
 
 ### End-user profile (web research)
 Can the typical end-user realistically be reached to leave a review? **This input mattered enormously in real campaigns — score it strictly.** Judge by the *typical* end user, not the buyer. Score the single typical/dominant persona — there is no "mixed" fallback; a genuine split still requires picking the one that dominates.

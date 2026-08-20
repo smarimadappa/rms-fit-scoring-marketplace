@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.9.0
+- Total customers & end-users: rebanded the customer-count table (1,001–1,999 → 60, 500–1,000 → 40) and added a minimum-customer floor — fewer than 500 product-specific customers bottoms this sub-score out at 10, subordinate to the existing new-product and end-user floors.
+
 ## v0.8.0
 - Add a hard service/provider disqualifier: if the resolved G2 listing's `type` isn't "Software" (e.g. a service/agency listing, `type: "Provider"`), scoring stops before Step 2 runs at all. Final score is forced to 0 and the band to a hard "No — not a fit" regardless of any other input — not averaged, not subject to the low-confidence cap.
 
