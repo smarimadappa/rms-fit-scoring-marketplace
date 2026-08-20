@@ -37,10 +37,17 @@ Single product:
 Batch: {"products": [ <single-product object>, ... ]} -> Summary sheet plus one
 detail sheet per product.
 
-SPECIAL FLAG
+SPECIAL FLAGS
   "low_activity_top1": true   on the Customer industry input when the product's
                               #1 reviewer vertical is on the low-activity list.
                               Triggers the final-score penalty from weights.json.
+
+  "service_disqualifier": true   on the PRODUCT object (top level, not an input)
+                              when the resolved G2 listing is a service/provider,
+                              not a software product (type != "Software"). Forces
+                              final_score to 0 and band to a hard "No" regardless
+                              of any inputs supplied -- pass "inputs": [] alongside
+                              it, since Step 2 should never have run.
 
 OPERATOR OVERRIDES (web-research inputs only)
 Pass the operator's value as `raw` AND the researched value as `researched_raw`.
@@ -90,6 +97,18 @@ def compute(product):
     confidence cap -- happens here, reading weights.json, so tuning that one
     file changes every future scorecard with no hand-arithmetic.
     """
+    # Hard disqualifier: a G2 service/provider listing, not a software product.
+    # Bypasses every other input entirely -- this is not averaged, weighted,
+    # or subject to the low-confidence cap. Set by the skill at Step 1.5 when
+    # the resolved product's `type` isn't "Software".
+    if product.get("service_disqualifier"):
+        for i in product.get("inputs", []):
+            i["weight"] = 0
+        product["final_score"] = 0
+        product["band"] = "No — not a fit (service/provider listing, not a software product)"
+        product["confidence_note"] = "N/A — disqualified before scoring"
+        return product
+
     inputs = product["inputs"]
 
     # Fail loudly on a name that isn't in weights.json: a typo would otherwise

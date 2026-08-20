@@ -39,6 +39,18 @@ A `%name%` search returns near-matches (e.g. "Photoshop" also returns Lightroom,
 - `product_name` and `vendor_name` — for output and disambiguation
 - `vendor_hq_country` / `vendor_hq_region` — a starting prior only for the regional-distribution input; it must be verified against actual customer geography, not used as the answer
 
+### Step 1.5 — Service disqualifier (MANDATORY, before gathering any input)
+RMS fit scoring is built for **software products** only. G2 also lists **service/agency providers** (implementation partners, marketing agencies, consultancies, etc.) alongside software — these are a different listing type and none of the eleven inputs were designed or validated against them.
+
+Check the resolved product's `type` field via G2 MCP (`show_product`, `fields: "type"`, or read it off the Step 1 result if already returned). Confirmed values: `"Software"` for real software products, `"Provider"` for service/agency listings.
+
+**If `type` is not `"Software"`** (e.g. `"Provider"`): STOP here. Do not run Step 2 (do not gather any of the eleven inputs, do not query Looker or category data). Go straight to output:
+- **Final score: 0.** **Band: "No — not a fit (service/provider listing, not a software product)."** This overrides everything — it is not averaged against other inputs and is not subject to the low-confidence cap logic; it's a hard disqualifier.
+- In the scoring JSON passed to `build_scorecard.py`, set `"service_disqualifier": true` on the product object and leave `"inputs": []` — the script forces final score 0 and the "No" band from that flag alone (see the script's header for the exact format).
+- Chat summary: state plainly that the resolved product is a G2 service/provider listing, not a software product, and that RMS fit scoring doesn't apply to it.
+
+If `type` is `"Software"`, proceed normally to Step 2.
+
 ### Step 2 — Gather inputs (filter every view by the captured product_id)
 Get a raw value for each of the eleven inputs. For all Looker inputs, **pass the `product_id` from Step 1 as a server-side filter** via `looker_run_query` — one product's rows only, never a full pull. Reuse the ID you already have; do not re-resolve it.
 
