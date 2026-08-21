@@ -33,7 +33,7 @@
       "existing_customer": [
         {"score_min": 0, "score_max": 39, "packages": [{"label": "Not a strong fit for RMS", "price": "n/a"}], "notes": ""},
         {"score_min": 40, "score_max": 59, "packages": [{"label": "Starter - 10 Reviews", "price": "$1,800"}], "notes": ""},
-        {"score_min": 60, "score_max": 79, "packages": [{"label": "Custom (Recommended) - 25 Reviews", "price": "$1,800"}, {"label": "Accelerator (max) - 50 Reviews", "price": "$5,000"}], "notes": "Accelerator is max goal although a custom package at 25 reviews is recommended"},
+        {"score_min": 60, "score_max": 79, "packages": [{"label": "Custom (Recommended) - 25 Reviews", "price": "$5,000"}, {"label": "Accelerator (max) - 50 Reviews", "price": "$10,000"}], "notes": "Accelerator is max goal although a custom package at 25 reviews is recommended"},
         {"score_min": 80, "score_max": 95, "packages": [{"label": "Accelerator - 50 Reviews", "price": "$10,000"}, {"label": "Growth - 100 Reviews", "price": "$18,000"}], "notes": "Further validation is needed for Growth (100 reviews) or Custom package larger than Growth"},
         {"score_min": 96, "score_max": 100, "packages": [{"label": "Any standard package", "price": "To Be Scoped"}, {"label": "Custom offering with 100+ reviews can be considered", "price": "To Be Scoped"}], "notes": "Any package can be sold and a larger package above Growth can be scoped"}
       ]

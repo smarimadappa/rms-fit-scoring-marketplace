@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.10.1
+- Fix Commercial/Enterprise Existing Customer 60-79 review-volume band pricing: Custom-25 was $1,800 and Accelerator-50 was $5,000 (a row-shift artifact in the source spreadsheet — those were actually the 40-59 row's Starter/Custom-25 prices). Corrected to $5,000/$10,000, matching the corrected source spreadsheet and the per-package prices used everywhere else in the table.
+
 ## v0.10.0
 - Add a review-volume/packaging recommendation (package + price) alongside the fit score, driven by score × segment bucket (SMB & MM vs. Commercial/Enterprise, derived from the Account Segment sub_score) × business type (new business vs. existing customer). New `review_volume_bands.json` holds the tunable band tables; `build_scorecard.py` computes and renders the recommendation; SKILL.md gains a Step 1.6 Salesforce lookup (`Account.Type` keyed by `G2_Vendor_ID__c`) to resolve business type.
 
