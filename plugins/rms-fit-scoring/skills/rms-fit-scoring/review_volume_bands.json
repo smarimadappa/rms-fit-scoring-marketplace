@@ -1,0 +1,42 @@
+{
+  "_comment": "SINGLE SOURCE OF TRUTH for the post-score review-volume/packaging recommendation. Edit here only. build_scorecard.py reads this file directly. Derived from the RMS pricing spreadsheet (segment bucket x business type x score band).",
+  "_segment_bucket_comment": "The script derives the bucket from the Account Segment input's sub_score (already computed per scoring-model.md's 5-tier table: Strategic/Strat Ent=100, Enterprise=75, Commercial=60, Mid-Market=50, Small Business/SMB=20) rather than string-matching the raw segment text. sub_score >= 60 (Strategic/Enterprise/Commercial) -> 'Commercial/Enterprise'; sub_score < 60 (Mid-Market/SMB) -> 'SMB & MM'. If the Account Segment input is unknown, the review-volume recommendation cannot be computed.",
+  "_business_type_comment": "business_type is supplied by the skill (not computed here) via a Salesforce lookup: query Account WHERE G2_Vendor_ID__c = <vendor_id from Looker product_vendor_info.vendor_id>, read Type. Map via account_type_map below. If no Account record is found or Type is unmapped, the skill defaults business_type to 'new_business' and flags it as unverified in the note -- this scoring model exists for pre-sale qualification, so an unresolved account is treated as a prospect rather than blocking the recommendation.",
+  "account_type_map": {
+    "Vendor - Customer": "existing_customer",
+    "Vendor - Customer - Hierarchy": "existing_customer",
+    "Vendor - Prospect": "new_business"
+  },
+  "_gap_rule_comment": "The source spreadsheet has no defined band for scores 30-39 (tables jump from '<30' to '40+'). Per operator decision, 30-39 is folded into the bottom band (extended to 0-39) rather than left unscoped.",
+  "_overlap_rule_comment": "The source spreadsheet's Commercial/Enterprise New Business table has overlapping band edges (e.g. '40-60' then '60-80'). Resolved to non-overlapping bounds matching the (cleanly-bounded) Existing Customer table's pattern: 0-39 / 40-59 / 60-79 / 80-95 / 96-100. A score landing exactly on a boundary gets the higher band.",
+  "bands": {
+    "SMB & MM": {
+      "new_business": [
+        {"score_min": 0, "score_max": 39, "packages": [{"label": "Not a strong fit for RMS", "price": "n/a"}], "notes": "Further evaluation is needed"},
+        {"score_min": 40, "score_max": 79, "packages": [{"label": "Starter - 10 Reviews", "price": "$1,800"}], "notes": ""},
+        {"score_min": 80, "score_max": 100, "packages": [{"label": "Starter or Custom", "price": "$1,800 - TBD"}], "notes": "Custom RMS proposal can be considered"}
+      ],
+      "existing_customer": [
+        {"score_min": 0, "score_max": 39, "packages": [{"label": "Not a strong fit for RMS", "price": "n/a"}], "notes": "Further evaluation is needed"},
+        {"score_min": 40, "score_max": 79, "packages": [{"label": "Starter - 10 Reviews", "price": "$1,800"}], "notes": ""},
+        {"score_min": 80, "score_max": 100, "packages": [{"label": "Starter or Custom", "price": "$1,800 - TBD"}], "notes": "Custom RMS proposal can be considered"}
+      ]
+    },
+    "Commercial/Enterprise": {
+      "new_business": [
+        {"score_min": 0, "score_max": 39, "packages": [{"label": "Not a strong fit for RMS", "price": "n/a"}], "notes": ""},
+        {"score_min": 40, "score_max": 59, "packages": [{"label": "Starter - 10 Reviews", "price": "$1,800"}], "notes": ""},
+        {"score_min": 60, "score_max": 79, "packages": [{"label": "Starter - 10 Reviews", "price": "$1,800"}, {"label": "Custom - 25 Reviews (max)", "price": "$5,000"}], "notes": "Further customized proposal can be considered"},
+        {"score_min": 80, "score_max": 95, "packages": [{"label": "Starter - 10 Reviews", "price": "$1,800"}, {"label": "Custom - 25 Reviews", "price": "$5,000"}, {"label": "Accelerator - 50 Reviews", "price": "$10,000"}], "notes": "Further validation is needed for Growth (100 reviews) or Custom package larger than Growth"},
+        {"score_min": 96, "score_max": 100, "packages": [{"label": "Any standard package", "price": "To Be Scoped"}, {"label": "Custom offering with 100+ reviews can be considered", "price": "To Be Scoped"}], "notes": "Any package can be sold and a larger package above Growth can be scoped. Custom package needs approval before pitching"}
+      ],
+      "existing_customer": [
+        {"score_min": 0, "score_max": 39, "packages": [{"label": "Not a strong fit for RMS", "price": "n/a"}], "notes": ""},
+        {"score_min": 40, "score_max": 59, "packages": [{"label": "Starter - 10 Reviews", "price": "$1,800"}], "notes": ""},
+        {"score_min": 60, "score_max": 79, "packages": [{"label": "Custom (Recommended) - 25 Reviews", "price": "$1,800"}, {"label": "Accelerator (max) - 50 Reviews", "price": "$5,000"}], "notes": "Accelerator is max goal although a custom package at 25 reviews is recommended"},
+        {"score_min": 80, "score_max": 95, "packages": [{"label": "Accelerator - 50 Reviews", "price": "$10,000"}, {"label": "Growth - 100 Reviews", "price": "$18,000"}], "notes": "Further validation is needed for Growth (100 reviews) or Custom package larger than Growth"},
+        {"score_min": 96, "score_max": 100, "packages": [{"label": "Any standard package", "price": "To Be Scoped"}, {"label": "Custom offering with 100+ reviews can be considered", "price": "To Be Scoped"}], "notes": "Any package can be sold and a larger package above Growth can be scoped"}
+      ]
+    }
+  }
+}

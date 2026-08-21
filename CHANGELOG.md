@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.10.0
+- Add a review-volume/packaging recommendation (package + price) alongside the fit score, driven by score × segment bucket (SMB & MM vs. Commercial/Enterprise, derived from the Account Segment sub_score) × business type (new business vs. existing customer). New `review_volume_bands.json` holds the tunable band tables; `build_scorecard.py` computes and renders the recommendation; SKILL.md gains a Step 1.6 Salesforce lookup (`Account.Type` keyed by `G2_Vendor_ID__c`) to resolve business type.
+
 ## v0.9.0
 - Total customers & end-users: rebanded the customer-count table (1,001–1,999 → 60, 500–1,000 → 40) and added a minimum-customer floor — fewer than 500 product-specific customers bottoms this sub-score out at 10, subordinate to the existing new-product and end-user floors.
 

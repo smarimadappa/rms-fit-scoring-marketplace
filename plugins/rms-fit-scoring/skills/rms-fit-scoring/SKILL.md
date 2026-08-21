@@ -5,11 +5,11 @@ description: Score a G2 vendor product for Review Managed Services (RMS) fit and
 
 # RMS Fit Scoring
 
-Scores a G2 vendor product for **Review Managed Services (RMS)** fit: a weighted 0–100 score mapped to a three-band spectrum recommendation (Go / Proceed with caution / No), output as a chat summary plus a downloadable `.xlsx` scorecard. Higher score = better/easier RMS fit.
+Scores a G2 vendor product for **Review Managed Services (RMS)** fit: a weighted 0–100 score mapped to a three-band spectrum recommendation (Go / Proceed with caution / No), plus a review-volume/package/price recommendation, output as a chat summary plus a downloadable `.xlsx` scorecard. Higher score = better/easier RMS fit.
 
-This is the **pre-sale qualification layer** only — no campaign planning, no review-count targets.
+This is the **pre-sale qualification layer** — no campaign planning beyond the packaging recommendation itself.
 
-Two caveats to state when presenting results: the score is **directional**, and the weights are **provisional and tunable** (not a validated model). All tunable numbers — weights, bands, confidence thresholds — live in `weights.json`. Sub-score rules and the full formula are in `references/scoring-model.md`; read it before scoring.
+Two caveats to state when presenting results: the score is **directional**, and the weights are **provisional and tunable** (not a validated model). All tunable numbers — weights, bands, confidence thresholds — live in `weights.json`; the review-volume/packaging table lives in `review_volume_bands.json`. Sub-score rules and the full formula are in `references/scoring-model.md`; read it before scoring.
 
 ## Workflow
 
@@ -38,6 +38,21 @@ A `%name%` search returns near-matches (e.g. "Photoshop" also returns Lightroom,
 - `product_id` — the filter key for every other view below
 - `product_name` and `vendor_name` — for output and disambiguation
 - `vendor_hq_country` / `vendor_hq_region` — a starting prior only for the regional-distribution input; it must be verified against actual customer geography, not used as the answer
+- `vendor_id` (add `product_vendor_info.vendor_id` to the fields list above) — needed at Step 4.5 to look up the account's business type in Salesforce; this is G2's numeric vendor ID, not a UUID/slug
+
+### Step 1.6 — Business type (New Business vs. Existing Customer) — Salesforce lookup
+Before scoring, determine whether this vendor is a brand-new prospect or an existing customer — the review-volume/packaging recommendation at Step 4.5 depends on it.
+
+Query Salesforce: `SELECT Id, Name, Type FROM Account WHERE G2_Vendor_ID__c = <vendor_id> LIMIT 1` (the `vendor_id` captured above).
+
+Map `Type` to `business_type`:
+| Type value | business_type |
+|---|---|
+| `Vendor - Customer` | `existing_customer` |
+| `Vendor - Customer - Hierarchy` | `existing_customer` |
+| `Vendor - Prospect` | `new_business` |
+
+If no Account record is found, or `Type` is some other value (e.g. `Investor - *`, `Partner - *`, `Competitor`, `Other`), set `business_type: "unknown"` and note it — `build_scorecard.py` defaults it to `new_business` and flags the recommendation as unverified rather than blocking on it. Pass `business_type` on the top-level product object in the scoring JSON (see the script's header for the exact format).
 
 ### Step 1.5 — Service disqualifier (MANDATORY, before gathering any input)
 RMS fit scoring is built for **software products** only. G2 also lists **service/agency providers** (implementation partners, marketing agencies, consultancies, etc.) alongside software — these are a different listing type and none of the eleven inputs were designed or validated against them.
@@ -83,14 +98,19 @@ The middle band is deliberate: a product can be a big prize (high market presenc
 
 Then apply the confidence cap. **Low confidence** = 2+ high-weight inputs unknown, OR fewer than 7 of 11 available (thresholds and the high-weight list in `weights.json`). On low confidence, **cap the band at "Proceed with caution"** — never Go — reporting the numeric score unchanged, and name the missing inputs.
 
+### Step 4.5 — Review volume recommendation (packaging)
+Separate from the Go/No-Go band: a review-volume/package/price recommendation, driven by the final score, the account's segment bucket, and its business type (Step 1.6). This is computed entirely by `scripts/build_scorecard.py` from `review_volume_bands.json` — the skill doesn't do this math itself, it just needs to supply `business_type` on the product object (Step 1.6) and make sure the Account Segment input's `sub_score` is populated (the segment bucket — "SMB & MM" vs "Commercial/Enterprise" — is derived from it automatically).
+
+If Account Segment is unknown, this recommendation can't be computed and the scorecard will say so — don't hand-guess a bucket. Report it in the chat summary alongside the fit score/band (e.g. "Recommended package: Accelerator – 50 Reviews ($10,000) or Growth – 100 Reviews ($18,000); existing customer, Commercial/Enterprise segment").
+
 ### Step 5 — Output
 Both:
-1. **Chat summary** — final score, recommendation, top 2–3 drivers, any unknowns. Researched inputs as **values only** (sources stay in the scorecard). Note if the band was capped for low confidence.
+1. **Chat summary** — final score, recommendation, top 2–3 drivers, any unknowns, and the review volume/packaging recommendation from Step 4.5. Researched inputs as **values only** (sources stay in the scorecard). Note if the band was capped for low confidence.
 2. **`.xlsx` scorecard** — generate with `scripts/build_scorecard.py` (JSON format in its header), present with the file tool. For any overridden input, pass both the researched value and the operator value so the scorecard shows both and marks the source authoritative.
 
 Batch requests → one workbook with a summary row per product plus a detail sheet each.
 
 ## Guardrails
 - Be honest about missing data; a score on few inputs is weak, say so.
-- To retune, edit `weights.json` only — never hardcode weights elsewhere.
-- No review-count targets or campaign plans — out of scope.
+- To retune scoring weights/bands, edit `weights.json` only — never hardcode weights elsewhere. To retune the review-volume/packaging recommendation, edit `review_volume_bands.json` only.
+- No review-count targets or campaign plans as part of the *fit score itself* — the packaging recommendation (Step 4.5) is the one exception, since it's asked for directly.

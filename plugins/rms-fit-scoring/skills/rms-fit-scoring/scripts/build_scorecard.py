@@ -56,6 +56,20 @@ row. Overridden inputs count as present and never count against confidence.
     {"input": "Total customers & end-users", "raw": "40,000 (contact-confirmed)",
      "researched_raw": "~12,000 (ZoomInfo est.)", "sub_score": 100,
      "source": "operator-supplied"}
+
+REVIEW VOLUME RECOMMENDATION (post-score packaging)
+Pass "business_type" on the PRODUCT object: "new_business" or "existing_customer"
+(from the skill's Salesforce Account.Type lookup keyed by G2 vendor_id -- see
+SKILL.md). Omit or pass "unknown" if the lookup found no account/an unmapped Type;
+the script then defaults to "new_business" and flags the note as unverified.
+
+The script derives the segment bucket ("SMB & MM" vs "Commercial/Enterprise") from
+the Account Segment input's sub_score -- no extra field needed. It then looks up
+the score's band in review_volume_bands.json for that bucket + business_type and
+attaches the result as product["review_volume_recommendation"]. If Account Segment
+is unknown (or the product was service-disqualified), the recommendation is marked
+unavailable with a reason instead of guessed.
+    {"product": "Acme CRM", "business_type": "new_business", "inputs": [...]}
 """
 
 
@@ -79,6 +93,62 @@ _WEIGHTS_RAW = _CFG.get("weights_raw_points", {})
 _CONF        = _CFG.get("low_confidence_rule", {})
 _HIGH        = set(_CFG.get("high_weight_inputs", []))
 _PENALTY     = _CFG.get("low_activity_top1_penalty", 0.7)
+
+# Review-volume/packaging recommendation table (separate tunable file -- see its
+# own header comments for the segment-bucket and business-type derivation rules).
+_RV_PATH = os.path.join(os.path.dirname(__file__), "..", "review_volume_bands.json")
+try:
+    with open(_RV_PATH) as _f:
+        _RV_CFG = json.load(_f)
+except (FileNotFoundError, json.JSONDecodeError) as _e:
+    sys.exit(f"FATAL: cannot read review_volume_bands.json at {_RV_PATH} ({_e}).")
+
+_RV_BANDS = _RV_CFG.get("bands", {})
+
+
+def segment_bucket_for(inputs):
+    """Derive SMB & MM vs Commercial/Enterprise from the Account Segment sub_score."""
+    seg = next((i for i in inputs if i.get("input") == "Account Segment"), None)
+    if seg is None or seg.get("sub_score") is None:
+        return None
+    return "Commercial/Enterprise" if seg["sub_score"] >= 60 else "SMB & MM"
+
+
+def review_volume_band_for(bucket, business_type, score):
+    for band in _RV_BANDS.get(bucket, {}).get(business_type, []):
+        if band["score_min"] <= score <= band["score_max"]:
+            return band
+    return None
+
+
+def compute_review_volume_recommendation(product):
+    if product.get("service_disqualifier"):
+        return {"unavailable_reason": "N/A -- disqualified before scoring"}
+
+    bucket = segment_bucket_for(product["inputs"])
+    if bucket is None:
+        return {"unavailable_reason": "Account Segment unknown -- cannot determine SMB/MM vs Commercial/Enterprise bucket"}
+
+    business_type = product.get("business_type", "unknown")
+    unverified = business_type not in ("new_business", "existing_customer")
+    if unverified:
+        business_type = "new_business"
+
+    band = review_volume_band_for(bucket, business_type, product["final_score"])
+    if band is None:
+        return {"unavailable_reason": f"No review-volume band defined for {bucket} / {business_type} at score {product['final_score']}"}
+
+    result = {
+        "segment_bucket": bucket,
+        "business_type": business_type,
+        "packages": band["packages"],
+        "notes": band["notes"],
+        "unavailable_reason": None,
+    }
+    if unverified:
+        result["notes"] = (result["notes"] + " " if result["notes"] else "") + \
+            "(business_type not supplied/resolved -- defaulted to new_business, verify against Salesforce.)"
+    return result
 
 
 def band_for(score):
@@ -107,6 +177,7 @@ def compute(product):
         product["final_score"] = 0
         product["band"] = "No — not a fit (service/provider listing, not a software product)"
         product["confidence_note"] = "N/A — disqualified before scoring"
+        product["review_volume_recommendation"] = compute_review_volume_recommendation(product)
         return product
 
     inputs = product["inputs"]
@@ -147,6 +218,7 @@ def compute(product):
         if (low_conf and raw_band.startswith("Go")) else raw_band
     product["confidence_note"] = "%d of %d inputs available%s" % (
         n_avail, len(inputs), " — LOW confidence" if low_conf else "")
+    product["review_volume_recommendation"] = compute_review_volume_recommendation(product)
     return product
 
 
@@ -250,6 +322,37 @@ def write_detail(ws, p):
     ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=5)
 
     r += 2
+    ws.cell(row=r, column=1, value="REVIEW VOLUME RECOMMENDATION").font = LABEL_FONT
+    r += 1
+    rv = p.get("review_volume_recommendation") or {}
+    if rv.get("unavailable_reason"):
+        cell = ws.cell(row=r, column=1, value=rv["unavailable_reason"])
+        cell.font = Font(name=FONT, italic=True, size=9, color="666666")
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+        r += 1
+    else:
+        meta = ws.cell(row=r, column=1,
+                        value=f"Segment: {rv.get('segment_bucket', '')}  |  Business type: {rv.get('business_type', '')}")
+        meta.font = Font(name=FONT, italic=True, size=9, color="666666")
+        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+        r += 1
+        for pkg in rv.get("packages", []):
+            lbl = ws.cell(row=r, column=1, value=pkg.get("label", ""))
+            lbl.font = BODY_FONT
+            ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=4)
+            price = ws.cell(row=r, column=5, value=pkg.get("price", ""))
+            price.font = Font(name=FONT, bold=True, size=10)
+            price.alignment = Alignment(horizontal="center")
+            ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=6)
+            r += 1
+        if rv.get("notes"):
+            note = ws.cell(row=r, column=1, value=rv["notes"])
+            note.font = Font(name=FONT, italic=True, size=9, color="666666")
+            note.alignment = Alignment(wrap_text=True)
+            ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+            r += 1
+
+    r += 1
     ws.cell(row=r, column=1, value="Notes").font = LABEL_FONT
     r += 1
     note_cell = ws.cell(row=r, column=1, value=p.get("recommendation", ""))
@@ -274,17 +377,24 @@ def write_detail(ws, p):
         ws.column_dimensions[chr(64 + i)].width = w
 
 
+def review_volume_summary_text(rv):
+    rv = rv or {}
+    if rv.get("unavailable_reason"):
+        return rv["unavailable_reason"]
+    return " / ".join(f"{pkg.get('label', '')} ({pkg.get('price', '')})" for pkg in rv.get("packages", []))
+
+
 def write_summary(ws, products):
     ws.sheet_view.showGridLines = False
     ws["A1"] = "RMS Fit Scoring — Summary"
     ws["A1"].font = TITLE_FONT
-    ws.merge_cells("A1:D1")
-    headers = ["Product", "Final score", "Recommendation", "Confidence"]
+    ws.merge_cells("A1:E1")
+    headers = ["Product", "Final score", "Recommendation", "Confidence", "Review Volume Rec."]
     for c, h in enumerate(headers, start=1):
         cell = ws.cell(row=3, column=c, value=h)
         cell.font = HEADER_FONT
         cell.fill = HEADER_FILL
-        cell.alignment = Alignment(horizontal="center", vertical="center")
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
         cell.border = BORDER
     r = 4
     for p in products:
@@ -297,10 +407,13 @@ def write_summary(ws, products):
         bc.fill = band_fill(p.get("band", ""))
         bc.alignment = Alignment(horizontal="center")
         ws.cell(row=r, column=4, value=p.get("confidence_note", "")).font = BODY_FONT
-        for c in range(1, 5):
+        rv_cell = ws.cell(row=r, column=5, value=review_volume_summary_text(p.get("review_volume_recommendation")))
+        rv_cell.font = BODY_FONT
+        rv_cell.alignment = Alignment(wrap_text=True, vertical="center")
+        for c in range(1, 6):
             ws.cell(row=r, column=c).border = BORDER
         r += 1
-    for i, w in enumerate([32, 12, 22, 24], start=1):
+    for i, w in enumerate([32, 12, 22, 24, 34], start=1):
         ws.column_dimensions[chr(64 + i)].width = w
 
 
