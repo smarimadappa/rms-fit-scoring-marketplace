@@ -5,7 +5,7 @@
     {
       "name": "rms-fit-scoring",
       "source": "./plugins/rms-fit-scoring",
-      "description": "Score a G2 vendor product for Review Managed Services (RMS) fit and produce a go/no-go scorecard."
+      "description": "Score a G2 vendor product for Review Managed Services (RMS) fit and produce a review-volume/package/price recommendation."
     }
   ]
 }

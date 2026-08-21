@@ -1,6 +1,6 @@
 {
   "name": "rms-fit-scoring",
-  "version": "0.10.1",
-  "description": "Score a G2 vendor product for Review Managed Services (RMS) fit and produce a go/no-go scorecard.",
+  "version": "0.11.0",
+  "description": "Score a G2 vendor product for Review Managed Services (RMS) fit and produce a review-volume/package/price recommendation.",
   "author": { "name": "G2 RMS Team", "email": "smarimadappa@g2.com" }
 }

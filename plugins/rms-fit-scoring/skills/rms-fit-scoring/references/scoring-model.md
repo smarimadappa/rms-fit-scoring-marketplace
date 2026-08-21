@@ -178,8 +178,8 @@ Log-scaled on stacked user count.
 | 500–1,999 | 30 |
 | < 500 | 15 |
 
-## Bands & confidence
-Recommendation bands and the low-confidence cap are defined in `weights.json` + SKILL.md — not repeated here. Always report how many of the eleven inputs were found (e.g. "9 of 11 available").
+## Confidence flag
+There is no Go/Proceed with caution/No banding on the 0–100 score. The low-confidence threshold is defined in `weights.json` + SKILL.md — not repeated here. It only attaches a "LOW CONFIDENCE" flag to the review-volume recommendation below; it never changes which recommendation is returned. Always report how many of the eleven inputs were found (e.g. "9 of 11 available").
 
-## Review volume recommendation (post-score packaging)
-A separate lookup — not part of the 0–100 fit score above — that maps (final score, segment bucket, business type) to a review-package/price recommendation. Fully defined in `review_volume_bands.json`; the segment bucket is derived from this file's own Account Segment sub_score (≥60 → "Commercial/Enterprise", <60 → "SMB & MM") and business type comes from the Step 1.6 Salesforce lookup in SKILL.md. See that file's header comments for the band tables and the gap/overlap resolution rules.
+## Review volume recommendation (the headline result)
+A separate lookup — not part of the 0–100 fit score above, and not a Go/No-Go label — that maps (final score, segment bucket, business type) to the actual review-package/price recommendation. This is the recommendation shown to the user. Fully defined in `review_volume_bands.json`; the segment bucket is derived from this file's own Account Segment sub_score (≥60 → "Commercial/Enterprise", <60 → "SMB & MM") and business type comes from the Step 1.6 Salesforce lookup in SKILL.md. See that file's header comments for the band tables and the gap/overlap resolution rules.

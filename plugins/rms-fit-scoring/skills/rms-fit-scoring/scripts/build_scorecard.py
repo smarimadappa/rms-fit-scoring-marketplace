@@ -9,14 +9,16 @@ USAGE
 WHAT THIS DOES
 The skill supplies each input's 0-100 sub_score. This script reads weights.json
 and does ALL the math: renormalizes weights around unknown inputs, applies the
-low-activity penalty, computes the final score, assigns the band, applies the
-low-confidence cap -- then renders the scorecard. Tuning weights.json is
-therefore the only thing needed to retune the model.
+low-activity penalty, computes the final score, flags low confidence -- then
+looks up the review-volume/pricing recommendation (the headline result; see
+REVIEW VOLUME RECOMMENDATION below) and renders the scorecard. There is no
+Go/Proceed with caution/No banding. Tuning weights.json or review_volume_bands.json
+is therefore the only thing needed to retune the model.
 
 INPUT JSON FORMAT
-Do NOT pass weight, final_score, band, or confidence_note -- all computed here.
-Input names MUST match weights_raw_points keys in weights.json exactly; the
-script exits with an error naming any that don't.
+Do NOT pass weight, final_score, confidence_note, or review_volume_recommendation
+-- all computed here. Input names MUST match weights_raw_points keys in
+weights.json exactly; the script exits with an error naming any that don't.
 
 Single product:
 {
@@ -45,9 +47,10 @@ SPECIAL FLAGS
   "service_disqualifier": true   on the PRODUCT object (top level, not an input)
                               when the resolved G2 listing is a service/provider,
                               not a software product (type != "Software"). Forces
-                              final_score to 0 and band to a hard "No" regardless
-                              of any inputs supplied -- pass "inputs": [] alongside
-                              it, since Step 2 should never have run.
+                              final_score to 0 and the recommendation to a hard
+                              disqualification message, regardless of any inputs
+                              supplied -- pass "inputs": [] alongside it, since
+                              Step 2 should never have run.
 
 OPERATOR OVERRIDES (web-research inputs only)
 Pass the operator's value as `raw` AND the researched value as `researched_raw`.
@@ -57,7 +60,8 @@ row. Overridden inputs count as present and never count against confidence.
      "researched_raw": "~12,000 (ZoomInfo est.)", "sub_score": 100,
      "source": "operator-supplied"}
 
-REVIEW VOLUME RECOMMENDATION (post-score packaging)
+REVIEW VOLUME RECOMMENDATION (the headline recommendation -- no Go/Proceed with
+caution/No banding)
 Pass "business_type" on the PRODUCT object: "new_business" or "existing_customer"
 (from the skill's Salesforce Account.Type lookup keyed by G2 vendor_id -- see
 SKILL.md). Omit or pass "unknown" if the lookup found no account/an unmapped Type;
@@ -66,9 +70,13 @@ the script then defaults to "new_business" and flags the note as unverified.
 The script derives the segment bucket ("SMB & MM" vs "Commercial/Enterprise") from
 the Account Segment input's sub_score -- no extra field needed. It then looks up
 the score's band in review_volume_bands.json for that bucket + business_type and
-attaches the result as product["review_volume_recommendation"]. If Account Segment
-is unknown (or the product was service-disqualified), the recommendation is marked
-unavailable with a reason instead of guessed.
+attaches the result as product["review_volume_recommendation"] -- this IS the
+recommendation shown in the scorecard, there is no separate Go/Proceed with
+caution/No label. If Account Segment is unknown (or the product was
+service-disqualified), the recommendation is marked unavailable/disqualified with
+a reason instead of guessed. On low confidence (see weights.json), the real
+package/price recommendation is still returned, just flagged "LOW CONFIDENCE" in
+its notes -- it is never forced down to a lower tier.
     {"product": "Acme CRM", "business_type": "new_business", "inputs": [...]}
 """
 
@@ -88,7 +96,6 @@ except (FileNotFoundError, json.JSONDecodeError) as _e:
     sys.exit(f"FATAL: cannot read weights.json at {_WEIGHTS_PATH} ({_e}). "
              "Run this script from the skill folder so it can find weights.json.")
 
-_BANDS       = _CFG.get("recommendation_bands", [])
 _WEIGHTS_RAW = _CFG.get("weights_raw_points", {})
 _CONF        = _CFG.get("low_confidence_rule", {})
 _HIGH        = set(_CFG.get("high_weight_inputs", []))
@@ -121,9 +128,14 @@ def review_volume_band_for(bucket, business_type, score):
     return None
 
 
-def compute_review_volume_recommendation(product):
+def compute_review_volume_recommendation(product, low_conf=False):
     if product.get("service_disqualifier"):
-        return {"unavailable_reason": "N/A -- disqualified before scoring"}
+        return {
+            "packages": [{"label": "Not a fit for RMS — service/provider listing, not a software product", "price": "n/a"}],
+            "notes": "",
+            "disqualified": True,
+            "unavailable_reason": None,
+        }
 
     bucket = segment_bucket_for(product["inputs"])
     if bucket is None:
@@ -138,44 +150,43 @@ def compute_review_volume_recommendation(product):
     if band is None:
         return {"unavailable_reason": f"No review-volume band defined for {bucket} / {business_type} at score {product['final_score']}"}
 
-    result = {
+    notes = band["notes"]
+    if unverified:
+        notes = (notes + " " if notes else "") + \
+            "(business_type not supplied/resolved -- defaulted to new_business, verify against Salesforce.)"
+    if low_conf:
+        notes = (notes + " " if notes else "") + \
+            "LOW CONFIDENCE -- verify inputs before pitching this package/price."
+
+    return {
         "segment_bucket": bucket,
         "business_type": business_type,
         "packages": band["packages"],
-        "notes": band["notes"],
+        "notes": notes,
+        "low_confidence": low_conf,
         "unavailable_reason": None,
     }
-    if unverified:
-        result["notes"] = (result["notes"] + " " if result["notes"] else "") + \
-            "(business_type not supplied/resolved -- defaulted to new_business, verify against Salesforce.)"
-    return result
-
-
-def band_for(score):
-    for b in _BANDS:
-        if score >= b["min"]:
-            return b["label"]
-    return "No"
 
 
 def compute(product):
-    """Compute weights, final score, band, and confidence from sub-scores.
+    """Compute weights, final score, and confidence from sub-scores; look up the
+    review-volume/pricing recommendation -- the headline result, no Go/Proceed
+    with caution/No banding.
 
     The skill supplies each input's 0-100 sub_score (and `low_activity_top1`
     on the industry input when its #1 vertical is low-activity). All the math
-    -- renormalizing weights around unknowns, the penalty, banding, and the
-    confidence cap -- happens here, reading weights.json, so tuning that one
-    file changes every future scorecard with no hand-arithmetic.
+    -- renormalizing weights around unknowns, the penalty, and the confidence
+    flag -- happens here, reading weights.json, so tuning that one file changes
+    every future scorecard with no hand-arithmetic.
     """
     # Hard disqualifier: a G2 service/provider listing, not a software product.
-    # Bypasses every other input entirely -- this is not averaged, weighted,
-    # or subject to the low-confidence cap. Set by the skill at Step 1.5 when
-    # the resolved product's `type` isn't "Software".
+    # Bypasses every other input entirely -- this is not averaged or weighted.
+    # Set by the skill at Step 1.5 when the resolved product's `type` isn't
+    # "Software".
     if product.get("service_disqualifier"):
         for i in product.get("inputs", []):
             i["weight"] = 0
         product["final_score"] = 0
-        product["band"] = "No — not a fit (service/provider listing, not a software product)"
         product["confidence_note"] = "N/A — disqualified before scoring"
         product["review_volume_recommendation"] = compute_review_volume_recommendation(product)
         return product
@@ -212,13 +223,9 @@ def compute(product):
     low_conf = (high_missing >= _CONF.get("min_high_weight_missing", 2)
                 or n_avail < _CONF.get("min_total_inputs_available", 7))
 
-    raw_band = band_for(final)
-    cap = _CONF.get("cap_band", "Proceed with caution / needs further validation")
-    product["band"] = (cap + " (capped — low confidence)") \
-        if (low_conf and raw_band.startswith("Go")) else raw_band
     product["confidence_note"] = "%d of %d inputs available%s" % (
         n_avail, len(inputs), " — LOW confidence" if low_conf else "")
-    product["review_volume_recommendation"] = compute_review_volume_recommendation(product)
+    product["review_volume_recommendation"] = compute_review_volume_recommendation(product, low_conf)
     return product
 
 
@@ -231,23 +238,28 @@ BODY_FONT = Font(name=FONT, size=10)
 THIN = Side(style="thin", color="D0D0D0")
 BORDER = Border(left=THIN, right=THIN, top=THIN, bottom=THIN)
 
-BAND_FILLS = {
-    "go": "C6EFCE",                 # green
-    "proceed with caution": "FFEB9C",  # amber
-    "no": "F4CCCC",                 # red
+STATUS_FILLS = {
+    "green": "C6EFCE",
+    "amber": "FFEB9C",
+    "red": "F4CCCC",
+    "neutral": "F2F2F2",
 }
 
 
-def band_fill(band):
-    b = (band or "").lower()
-    # Order matters: check the multi-word amber label before the short ones.
-    if "proceed with caution" in b:
-        return PatternFill("solid", fgColor=BAND_FILLS["proceed with caution"])
-    if b.startswith("go"):
-        return PatternFill("solid", fgColor=BAND_FILLS["go"])
-    if b.startswith("no"):
-        return PatternFill("solid", fgColor=BAND_FILLS["no"])
-    return PatternFill("solid", fgColor="FFFFFF")
+def review_volume_fill(rv):
+    """Color the recommendation by outcome: red = not a fit/disqualified,
+    amber = low confidence, green = a real package/price, gray = unavailable."""
+    rv = rv or {}
+    if rv.get("unavailable_reason"):
+        return PatternFill("solid", fgColor=STATUS_FILLS["neutral"])
+    if rv.get("disqualified"):
+        return PatternFill("solid", fgColor=STATUS_FILLS["red"])
+    packages = rv.get("packages", [])
+    if packages and packages[0].get("label", "").startswith("Not a strong fit"):
+        return PatternFill("solid", fgColor=STATUS_FILLS["red"])
+    if rv.get("low_confidence"):
+        return PatternFill("solid", fgColor=STATUS_FILLS["amber"])
+    return PatternFill("solid", fgColor=STATUS_FILLS["green"])
 
 
 def write_detail(ws, p):
@@ -313,35 +325,32 @@ def write_detail(ws, p):
     fs.font = Font(name=FONT, bold=True, size=13)
     fs.alignment = Alignment(horizontal="center")
 
-    r += 1
-    ws.cell(row=r, column=1, value="RECOMMENDATION").font = LABEL_FONT
-    bcell = ws.cell(row=r, column=3, value=p.get("band", ""))
-    bcell.font = Font(name=FONT, bold=True, size=11)
-    bcell.fill = band_fill(p.get("band", ""))
-    bcell.alignment = Alignment(horizontal="center")
-    ws.merge_cells(start_row=r, start_column=3, end_row=r, end_column=5)
-
     r += 2
-    ws.cell(row=r, column=1, value="REVIEW VOLUME RECOMMENDATION").font = LABEL_FONT
+    ws.cell(row=r, column=1, value="RECOMMENDATION").font = LABEL_FONT
     r += 1
     rv = p.get("review_volume_recommendation") or {}
+    rv_fill = review_volume_fill(rv)
     if rv.get("unavailable_reason"):
         cell = ws.cell(row=r, column=1, value=rv["unavailable_reason"])
         cell.font = Font(name=FONT, italic=True, size=9, color="666666")
+        cell.fill = rv_fill
         ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
         r += 1
     else:
-        meta = ws.cell(row=r, column=1,
-                        value=f"Segment: {rv.get('segment_bucket', '')}  |  Business type: {rv.get('business_type', '')}")
-        meta.font = Font(name=FONT, italic=True, size=9, color="666666")
-        ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
-        r += 1
+        if rv.get("segment_bucket"):
+            meta = ws.cell(row=r, column=1,
+                            value=f"Segment: {rv.get('segment_bucket', '')}  |  Business type: {rv.get('business_type', '')}")
+            meta.font = Font(name=FONT, italic=True, size=9, color="666666")
+            ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
+            r += 1
         for pkg in rv.get("packages", []):
             lbl = ws.cell(row=r, column=1, value=pkg.get("label", ""))
-            lbl.font = BODY_FONT
+            lbl.font = Font(name=FONT, bold=True, size=11)
+            lbl.fill = rv_fill
             ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=4)
             price = ws.cell(row=r, column=5, value=pkg.get("price", ""))
-            price.font = Font(name=FONT, bold=True, size=10)
+            price.font = Font(name=FONT, bold=True, size=11)
+            price.fill = rv_fill
             price.alignment = Alignment(horizontal="center")
             ws.merge_cells(start_row=r, start_column=5, end_row=r, end_column=6)
             r += 1
@@ -366,8 +375,8 @@ def write_detail(ws, p):
     ws.merge_cells(start_row=r, start_column=1, end_row=r, end_column=6)
     r += 1
     disc = ws.cell(row=r, column=1,
-                   value="Score is directional. Weights and bands are provisional and tunable "
-                         "(see references/scoring-model.md). Not a validated prediction of success.")
+                   value="Score is directional. Weights and the review-volume/pricing table are provisional "
+                         "and tunable (see references/scoring-model.md). Not a validated prediction of success.")
     disc.font = Font(name=FONT, italic=True, size=8, color="999999")
     disc.alignment = Alignment(wrap_text=True)
     ws.merge_cells(start_row=r, start_column=1, end_row=r + 1, end_column=6)
@@ -381,15 +390,18 @@ def review_volume_summary_text(rv):
     rv = rv or {}
     if rv.get("unavailable_reason"):
         return rv["unavailable_reason"]
-    return " / ".join(f"{pkg.get('label', '')} ({pkg.get('price', '')})" for pkg in rv.get("packages", []))
+    text = " / ".join(f"{pkg.get('label', '')} ({pkg.get('price', '')})" for pkg in rv.get("packages", []))
+    if rv.get("low_confidence"):
+        text += "  [LOW CONFIDENCE]"
+    return text
 
 
 def write_summary(ws, products):
     ws.sheet_view.showGridLines = False
     ws["A1"] = "RMS Fit Scoring — Summary"
     ws["A1"].font = TITLE_FONT
-    ws.merge_cells("A1:E1")
-    headers = ["Product", "Final score", "Recommendation", "Confidence", "Review Volume Rec."]
+    ws.merge_cells("A1:D1")
+    headers = ["Product", "Final score", "Recommendation", "Confidence"]
     for c, h in enumerate(headers, start=1):
         cell = ws.cell(row=3, column=c, value=h)
         cell.font = HEADER_FONT
@@ -402,18 +414,16 @@ def write_summary(ws, products):
         sc = ws.cell(row=r, column=2, value=round(p.get("final_score", 0), 1))
         sc.font = BODY_FONT
         sc.alignment = Alignment(horizontal="center")
-        bc = ws.cell(row=r, column=3, value=p.get("band", ""))
-        bc.font = BODY_FONT
-        bc.fill = band_fill(p.get("band", ""))
-        bc.alignment = Alignment(horizontal="center")
+        rv = p.get("review_volume_recommendation")
+        rc = ws.cell(row=r, column=3, value=review_volume_summary_text(rv))
+        rc.font = BODY_FONT
+        rc.fill = review_volume_fill(rv)
+        rc.alignment = Alignment(wrap_text=True, vertical="center")
         ws.cell(row=r, column=4, value=p.get("confidence_note", "")).font = BODY_FONT
-        rv_cell = ws.cell(row=r, column=5, value=review_volume_summary_text(p.get("review_volume_recommendation")))
-        rv_cell.font = BODY_FONT
-        rv_cell.alignment = Alignment(wrap_text=True, vertical="center")
-        for c in range(1, 6):
+        for c in range(1, 5):
             ws.cell(row=r, column=c).border = BORDER
         r += 1
-    for i, w in enumerate([32, 12, 22, 24, 34], start=1):
+    for i, w in enumerate([32, 12, 40, 24], start=1):
         ws.column_dimensions[chr(64 + i)].width = w
 
 

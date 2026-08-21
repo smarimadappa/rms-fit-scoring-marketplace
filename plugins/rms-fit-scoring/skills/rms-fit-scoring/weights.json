@@ -22,24 +22,10 @@
     "Customer industry (vertical G2-activity)",
     "Review generation likelihood"
   ],
-  "recommendation_bands": [
-    {
-      "min": 61,
-      "label": "Go"
-    },
-    {
-      "min": 31,
-      "label": "Proceed with caution / needs further validation"
-    },
-    {
-      "min": 0,
-      "label": "No"
-    }
-  ],
+  "_low_confidence_comment": "There is no Go/Proceed with caution/No banding -- the headline recommendation is the review-volume/pricing lookup in review_volume_bands.json. These thresholds only control the LOW CONFIDENCE flag: when tripped, build_scorecard.py still returns the real package/price recommendation but appends a LOW CONFIDENCE note so a human verifies before pitching -- it never forces a downgrade.",
   "low_confidence_rule": {
     "min_high_weight_missing": 2,
-    "min_total_inputs_available": 7,
-    "cap_band": "Proceed with caution / needs further validation"
+    "min_total_inputs_available": 7
   },
   "_low_activity_industries_comment": "Reviewer verticals that engage poorly with G2 regardless of user job type. Business-maintained; grows over time. Used by the Customer industry input: if the #1 reviewer vertical is on this list, that input floors at 15 AND the final score is multiplied by low_activity_top1_penalty. Match on survey_responses.industry_name.",
   "low_activity_top1_penalty": 0.7,

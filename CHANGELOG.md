@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.11.0
+- Remove the Go / Proceed with caution / No banding entirely. The review-volume/package/price recommendation (added in v0.10.0) is now the sole headline recommendation — no abstract label is ever shown alongside or instead of it. `weights.json` no longer has `recommendation_bands` or `cap_band`; the low-confidence thresholds now only attach a "LOW CONFIDENCE" flag to the real recommendation rather than capping/downgrading it. Service-disqualified products now surface an explicit "Not a fit for RMS" recommendation instead of a "No" band. `build_scorecard.py`'s summary/detail sheets, SKILL.md's Step 4/4.5, and scoring-model.md updated to match.
+
 ## v0.10.1
 - Fix Commercial/Enterprise Existing Customer 60-79 review-volume band pricing: Custom-25 was $1,800 and Accelerator-50 was $5,000 (a row-shift artifact in the source spreadsheet — those were actually the 40-59 row's Starter/Custom-25 prices). Corrected to $5,000/$10,000, matching the corrected source spreadsheet and the per-package prices used everywhere else in the table.
 

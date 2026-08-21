@@ -1,15 +1,15 @@
 ---
 name: rms-fit-scoring
-description: Score a G2 vendor product for Review Managed Services (RMS) fit and produce a go/no-go recommendation. Use whenever someone asks whether RMS should be sold for a product, how good an RMS fit a product is, whether a product is worth an RMS campaign, or wants an RMS fit score, RMS qualification, or an RMS scorecard. Trigger even when someone just names a product and asks "should we do RMS for this?", "is this a good RMS target?", or "score this for review managed services" — run this model, don't answer from general judgment. Also trigger on batch requests ("score these five products for RMS").
+description: Score a G2 vendor product for Review Managed Services (RMS) fit and produce a review-volume/package/price recommendation. Use whenever someone asks whether RMS should be sold for a product, how good an RMS fit a product is, whether a product is worth an RMS campaign, or wants an RMS fit score, RMS qualification, or an RMS scorecard. Trigger even when someone just names a product and asks "should we do RMS for this?", "is this a good RMS target?", or "score this for review managed services" — run this model, don't answer from general judgment. Also trigger on batch requests ("score these five products for RMS").
 ---
 
 # RMS Fit Scoring
 
-Scores a G2 vendor product for **Review Managed Services (RMS)** fit: a weighted 0–100 score mapped to a three-band spectrum recommendation (Go / Proceed with caution / No), plus a review-volume/package/price recommendation, output as a chat summary plus a downloadable `.xlsx` scorecard. Higher score = better/easier RMS fit.
+Scores a G2 vendor product for **Review Managed Services (RMS)** fit: a weighted 0–100 score that drives a **review-volume/package/price recommendation** — the headline output. There is no Go / Proceed with caution / No banding; the recommendation is always the actual package(s) and price(s) to pitch (or "not a strong fit," or a hard disqualification), never an abstract label. Output as a chat summary plus a downloadable `.xlsx` scorecard. Higher score = better/easier RMS fit = bigger recommended package.
 
 This is the **pre-sale qualification layer** — no campaign planning beyond the packaging recommendation itself.
 
-Two caveats to state when presenting results: the score is **directional**, and the weights are **provisional and tunable** (not a validated model). All tunable numbers — weights, bands, confidence thresholds — live in `weights.json`; the review-volume/packaging table lives in `review_volume_bands.json`. Sub-score rules and the full formula are in `references/scoring-model.md`; read it before scoring.
+Two caveats to state when presenting results: the score is **directional**, and the weights are **provisional and tunable** (not a validated model). All tunable numbers — weights, confidence thresholds — live in `weights.json`; the review-volume/packaging table lives in `review_volume_bands.json`. Sub-score rules and the full formula are in `references/scoring-model.md`; read it before scoring.
 
 ## Workflow
 
@@ -60,8 +60,8 @@ RMS fit scoring is built for **software products** only. G2 also lists **service
 Check the resolved product's `type` field via G2 MCP (`show_product`, `fields: "type"`, or read it off the Step 1 result if already returned). Confirmed values: `"Software"` for real software products, `"Provider"` for service/agency listings.
 
 **If `type` is not `"Software"`** (e.g. `"Provider"`): STOP here. Do not run Step 2 (do not gather any of the eleven inputs, do not query Looker or category data). Go straight to output:
-- **Final score: 0.** **Band: "No — not a fit (service/provider listing, not a software product)."** This overrides everything — it is not averaged against other inputs and is not subject to the low-confidence cap logic; it's a hard disqualifier.
-- In the scoring JSON passed to `build_scorecard.py`, set `"service_disqualifier": true` on the product object and leave `"inputs": []` — the script forces final score 0 and the "No" band from that flag alone (see the script's header for the exact format).
+- **Final score: 0.** **Recommendation: "Not a fit for RMS — service/provider listing, not a software product."** This overrides everything — it is not averaged against other inputs and is not subject to the confidence-flag logic; it's a hard disqualifier.
+- In the scoring JSON passed to `build_scorecard.py`, set `"service_disqualifier": true` on the product object and leave `"inputs": []` — the script forces final score 0 and the disqualification recommendation from that flag alone (see the script's header for the exact format).
 - Chat summary: state plainly that the resolved product is a G2 service/provider listing, not a software product, and that RMS fit scoring doesn't apply to it.
 
 If `type` is `"Software"`, proceed normally to Step 2.
@@ -91,26 +91,25 @@ Never guess or fabricate a value. If an input can't be found (or a Look returns 
 ### Step 3 — Score
 Per `references/scoring-model.md`: compute each 0–100 sub-score, multiply by its renormalized weight, sum for the 0–100 final score.
 
-### Step 4 — Recommend
-Map the score to a band (from `weights.json`), a spectrum rather than a binary: **61+** Go · **31–60** Proceed with caution / needs further validation · **0–30** No.
+### Step 4 — Confidence flag
+There is no Go / Proceed with caution / No band. Instead, compute a **confidence flag**: **low confidence** = 2+ high-weight inputs unknown, OR fewer than 7 of 11 available (thresholds and the high-weight list in `weights.json`).
 
-The middle band is deliberate: a product can be a big prize (high market presence, large customer base) yet still be hard to run reviews for (non-desk end users, single-region, small category). Those land in "proceed with caution" — worth pursuing but validate feasibility first, don't treat as an automatic Go.
+Low confidence does **not** downgrade or block the recommendation — Step 4.5 always returns the real package/price for the actual score. It only adds a visible "LOW CONFIDENCE — verify inputs before pitching this package/price" flag, so a human catches a thin-data recommendation before acting on it. Always name the missing inputs alongside the flag.
 
-Then apply the confidence cap. **Low confidence** = 2+ high-weight inputs unknown, OR fewer than 7 of 11 available (thresholds and the high-weight list in `weights.json`). On low confidence, **cap the band at "Proceed with caution"** — never Go — reporting the numeric score unchanged, and name the missing inputs.
+### Step 4.5 — Review volume recommendation (the headline result)
+The final score, the account's segment bucket, and its business type (Step 1.6) drive a **review-volume/package/price recommendation** — this IS the recommendation; there's no separate Go/No-Go label layered on top. This is computed entirely by `scripts/build_scorecard.py` from `review_volume_bands.json` — the skill doesn't do this math itself, it just needs to supply `business_type` on the product object (Step 1.6) and make sure the Account Segment input's `sub_score` is populated (the segment bucket — "SMB & MM" vs "Commercial/Enterprise" — is derived from it automatically).
 
-### Step 4.5 — Review volume recommendation (packaging)
-Separate from the Go/No-Go band: a review-volume/package/price recommendation, driven by the final score, the account's segment bucket, and its business type (Step 1.6). This is computed entirely by `scripts/build_scorecard.py` from `review_volume_bands.json` — the skill doesn't do this math itself, it just needs to supply `business_type` on the product object (Step 1.6) and make sure the Account Segment input's `sub_score` is populated (the segment bucket — "SMB & MM" vs "Commercial/Enterprise" — is derived from it automatically).
-
-If Account Segment is unknown, this recommendation can't be computed and the scorecard will say so — don't hand-guess a bucket. Report it in the chat summary alongside the fit score/band (e.g. "Recommended package: Accelerator – 50 Reviews ($10,000) or Growth – 100 Reviews ($18,000); existing customer, Commercial/Enterprise segment").
+If Account Segment is unknown, this recommendation can't be computed and the scorecard will say so — don't hand-guess a bucket. Report it in the chat summary alongside the fit score (e.g. "Recommended package: Accelerator – 50 Reviews ($10,000) or Growth – 100 Reviews ($18,000); existing customer, Commercial/Enterprise segment").
 
 ### Step 5 — Output
 Both:
-1. **Chat summary** — final score, recommendation, top 2–3 drivers, any unknowns, and the review volume/packaging recommendation from Step 4.5. Researched inputs as **values only** (sources stay in the scorecard). Note if the band was capped for low confidence.
+1. **Chat summary** — final score, the review-volume/package/price recommendation from Step 4.5 (the headline result), top 2–3 drivers, any unknowns. Researched inputs as **values only** (sources stay in the scorecard). Note the low-confidence flag if it fired (Step 4) — never present a low-confidence recommendation as if it were fully verified.
 2. **`.xlsx` scorecard** — generate with `scripts/build_scorecard.py` (JSON format in its header), present with the file tool. For any overridden input, pass both the researched value and the operator value so the scorecard shows both and marks the source authoritative.
 
 Batch requests → one workbook with a summary row per product plus a detail sheet each.
 
 ## Guardrails
 - Be honest about missing data; a score on few inputs is weak, say so.
-- To retune scoring weights/bands, edit `weights.json` only — never hardcode weights elsewhere. To retune the review-volume/packaging recommendation, edit `review_volume_bands.json` only.
-- No review-count targets or campaign plans as part of the *fit score itself* — the packaging recommendation (Step 4.5) is the one exception, since it's asked for directly.
+- To retune scoring weights, edit `weights.json` only — never hardcode weights elsewhere. To retune the review-volume/packaging recommendation, edit `review_volume_bands.json` only.
+- Never invent a Go/Proceed with caution/No label — the review-volume/pricing recommendation (Step 4.5) is the only recommendation output.
+- No review-count targets or campaign plans beyond the packaging recommendation itself, since that's asked for directly.
